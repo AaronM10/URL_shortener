@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+    stages {
+        stage('Checkout (git checkout)') {
+                steps {
+                    checkout scm
+                }
+            }
+        stage('Build (for testing)') {
+            steps {
+                dir('services/shortener-service') {
+                    sh './gradlew build -x test'
+                }
+            }
+        }
+        stage('Tests') {
+            steps {
+                dir('services/shortener-service') {
+                    sh './gradlew test'
+                }
+            }
+        }
+        stage('Building Image After Testing (Containerising it)') {
+            steps {
+                sh 'docker build -t aaronm10/shortener-service:v1 .'
+            }
+        }
+        stage('Pushing Image to Docker') {
+            steps {
+                sh 'docker push -t aaronm10/shortener-service:v1 .'
+            }
+        }
+        stage('Deploy To Kuberentes') {
+            steps {
+                echo ''
+            }
+        }
+        stage('Completed') {
+            steps {
+                echo 'Completed'
+            }
+        }
+    }
+}
