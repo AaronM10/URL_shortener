@@ -41,3 +41,5 @@ out/
 *.iml
 build/
 .gradle/
+#No secrets in the repo
+k8s/secret.yaml

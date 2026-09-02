@@ -1,0 +1,49 @@
+#Manages the Spring boot applciation workload and container runtime specs
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: urlshortener-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: urlshortener-app
+  template:
+    metadata:
+      labels:
+        app: urlshortener-app
+    spec:
+      containers:
+        - name: urlshortener-app
+          image: aaronm10/shortener-service:v1
+          imagePullPolicy: IfNotPresent
+          env:
+            #Tells spring boot where to find the database and what credentials to use
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres-service:5432/urlshortener"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: secret-postgres
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secret-postgres
+                  key: password
+          ports:
+            - containerPort: 8081
+#Exposes the spring boot application to the outside world via a nodeport service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: urlshortener-app-service
+spec:
+  type: NodePort
+  selector:
+    app: urlshortener-app
+  ports:
+    - port: 8081
+      targetPort: 8081
+      nodePort: 30081
