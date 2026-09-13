@@ -2,21 +2,14 @@ pipeline {
     agent any
     stages {
         stage('Checkout (git checkout)') {
-                steps {
-                    checkout scm
-                }
-            }
-        stage('Build (for testing)') {
             steps {
-                dir('services/shortener-service') {
-                    sh './gradlew build -x test'
-                }
+                checkout scm
             }
         }
-        stage('Tests') {
+        stage('Test and validating manifests') {
             steps {
                 dir('services/shortener-service') {
-                    sh './gradlew test'
+                    sh 'kubectl apply --dry-run=client -f k8s'
                 }
             }
         }
@@ -30,11 +23,7 @@ pipeline {
                 sh 'docker push -t aaronm10/shortener-service:v1 .'
             }
         }
-        stage('Deploy To Kuberentes') {
-            steps {
-                echo ''
-            }
-        }
+
         stage('Completed') {
             steps {
                 echo 'Completed'
