@@ -8,7 +8,7 @@ pipeline {
         }
         stage('Test and validating manifests') {
             steps {
-                dir('services/shortener-service') {
+                dir('services/UrLshortener-service') {
                     sh 'kubectl apply --dry-run=client -f k8s'
                 }
             }
