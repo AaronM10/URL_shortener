@@ -11,7 +11,8 @@ pipeline {
                 echo 'Installing Minikube and Kubectl...'
                 sh '''
                     # Download and install kubectl
-                    curl -LO "https://k8s.io(curl -L -s https://k8s.io)/bin/linux/amd64/kubectl"
+                    KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+                    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
                     chmod +x ./kubectl
                     
                     # Download and install minikube
