@@ -13,20 +13,30 @@ pipeline {
             steps {
                 echo 'Installing Minikube and Kubectl...'
                 sh '''
-                    # Download and install kubectl
-                    KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
-                    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-                    chmod +x ./kubectl
-                    
-                    # Download and install minikube
-                    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-                    chmod +x minikube-linux-amd64
-                    mkdir -p bin
-                    
-                    #Moving kubectl and minikube in there respective places
-                    mv ./kubectl ./bin/kubectl
-                    mv ./minikube-linux-amd64 ./bin/minikube
-                '''
+            set -e
+
+            OS=$(uname -s | tr '[:upper:]' '[:lower:]')   # darwin or linux
+            ARCH=$(uname -m)
+            case "$ARCH" in
+                x86_64) ARCH=amd64 ;;
+                arm64|aarch64) ARCH=arm64 ;;
+            esac
+
+            echo "Detected OS=$OS ARCH=$ARCH"
+
+            # Download and install kubectl
+            KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+            curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl"
+            chmod +x ./kubectl
+
+            # Download and install minikube
+            curl -LO "https://storage.googleapis.com/minikube/releases/latest/minikube-${OS}-${ARCH}"
+            chmod +x "minikube-${OS}-${ARCH}"
+
+            mkdir -p bin
+            mv ./kubectl ./bin/kubectl
+            mv "./minikube-${OS}-${ARCH}" ./bin/minikube
+        '''
             }
         }
         stage('Start Minikube') {
