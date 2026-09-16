@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    environment {
+        PATH = "${WORKSPACE}/bin:${env.PATH}"
+    }
     stages {
         stage('Checkout (git checkout)') {
             steps {
@@ -47,7 +50,7 @@ pipeline {
         }
         stage('Pushing Image to Docker') {
             steps {
-                sh 'docker push aaronm10/shortener-service:v1 .'
+                sh 'docker push aaronm10/shortener-service:v1'
             }
         }
 
