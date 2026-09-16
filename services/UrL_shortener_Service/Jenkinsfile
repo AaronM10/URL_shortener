@@ -1,14 +1,9 @@
 pipeline {
     agent any
     environment {
-        PATH = "${WORKSPACE}/bin:${env.PATH}"
+        PATH = "${WORKSPACE}/bin:/usr/local/bin:${env.PATH}"
     }
     stages {
-        stage('Checkout (git checkout)') {
-            steps {
-                checkout scm
-            }
-        }
         stage('Install Tools') {
             steps {
                 echo 'Installing Minikube and Kubectl...'
@@ -46,27 +41,57 @@ pipeline {
                 sh 'minikube start --driver=docker'
             }
         }
+        stage('Create DB Secret') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'postgres-creds', usernameVariable: 'DB_USER', passwordVariable: 'DB_PASS')]) {
+                    sh '''
+                        # Delete existing secret if present without failing the build if it does not exist
+                        kubectl delete secret secret-postgres --ignore-not-found
+        
+                        # Create the fresh secret
+                        kubectl create secret generic secret-postgres \
+                          --from-literal=POSTGRES_USER="$DB_USER" \
+                          --from-literal=POSTGRES_PASSWORD="$DB_PASS" \
+                          --from-literal=POSTGRES_DB=urlshortener
+                    '''
+                }
+            }
+        }
         stage('Test and validating manifests') {
             steps {
-                dir('services/UrLshortener-service') {
+                dir('services/UrL_shortener_Service') {
                     sh 'kubectl apply --dry-run=client -f k8s'
                 }
             }
         }
         stage('Building Image After Testing (Containerising it)') {
             steps {
-                sh ' eval $(minikube docker-env) && docker build -t aaronm10/shortener-service:v1 .'
+                dir('services/UrL_shortener_Service') {
+                    sh ' eval $(minikube docker-env) && docker build -t aaronm10/shortener-service:v1 .'
+                }
             }
         }
         stage('Pushing Image to Docker') {
             steps {
-                sh 'docker push aaronm10/shortener-service:v1'
+                dir('services/UrL_shortener_Service') {
+                    sh 'docker push aaronm10/shortener-service:v1'
+                }
+            }
+        }
+
+        stage('Running kubernetes'){
+            steps{
+                dir('services/UrL_shortener_Service') {
+                    sh 'kubectl apply -f k8s'
+                    sh 'kubectl get pods'
+                }
             }
         }
 
         stage('Completed') {
             steps {
                 echo 'Completed'
+                sh ''
             }
         }
     }
