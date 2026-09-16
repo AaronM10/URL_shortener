@@ -6,9 +6,30 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Running minikube') {
+        stage('Install Tools') {
             steps {
-                sh 'minikube start'
+                echo 'Installing Minikube and Kubectl...'
+                sh '''
+                    # Download and install kubectl
+                    curl -LO "https://k8s.io(curl -L -s https://k8s.io)/bin/linux/amd64/kubectl"
+                    chmod +x ./kubectl
+                    
+                    # Download and install minikube
+                    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+                    chmod +x minikube-linux-amd64
+                    mkdir -p bin
+                    
+                    #Moving kubectl and minikube in there respective places
+                    mv ./kubectl ./bin/kubectl
+                    mv ./minikube-linux-amd64 ./bin/minikube
+                '''
+            }
+        }
+        stage('Start Minikube') {
+            steps {
+                echo 'Starting Minikube using Docker driver...'
+                // You must start Minikube so kubectl has a cluster to validate against
+                sh 'minikube start --driver=docker'
             }
         }
         stage('Test and validating manifests') {
@@ -20,12 +41,12 @@ pipeline {
         }
         stage('Building Image After Testing (Containerising it)') {
             steps {
-                sh 'docker build -t aaronm10/shortener-service:v1 .'
+                sh ' eval $(minikube docker-env) && docker build -t aaronm10/shortener-service:v1 .'
             }
         }
         stage('Pushing Image to Docker') {
             steps {
-                sh 'docker push -t aaronm10/shortener-service:v1 .'
+                sh 'docker push aaronm10/shortener-service:v1 .'
             }
         }
 
