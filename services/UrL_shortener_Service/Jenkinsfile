@@ -6,6 +6,11 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Running minikube') {
+            steps {
+                sh 'minikube start'
+            }
+        }
         stage('Test and validating manifests') {
             steps {
                 dir('services/UrLshortener-service') {
