@@ -9,4 +9,4 @@ data:
         code VARCHAR(6) PRIMARY KEY,
         long_url VARCHAR(2048) NOT NULL,
         number_of_clicks INT DEFAULT 0
-    );
+      );
