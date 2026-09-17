@@ -4,6 +4,11 @@ pipeline {
         PATH = "${WORKSPACE}/bin:/usr/local/bin:${env.PATH}"
     }
     stages {
+        stage('Checkout (git checkout)') {
+            steps {
+                checkout scm
+            }
+        }
         stage('Install Tools') {
             steps {
                 echo 'Installing Minikube and Kubectl...'
@@ -47,13 +52,13 @@ pipeline {
                     sh '''
                         # Delete existing secret if present without failing the build if it does not exist
                         kubectl delete secret secret-postgres --ignore-not-found
-        
-                        # Create the fresh secret
-                        kubectl create secret generic secret-postgres \
-                          --from-literal=POSTGRES_USER="$DB_USER" \
-                          --from-literal=POSTGRES_PASSWORD="$DB_PASS" \
-                          --from-literal=POSTGRES_DB=urlshortener
+                        kubectl create secret generic secret-postgres --from-literal=username=$DB_USER --from-literal=password=$DB_PASS
+                        
+                        # Force Kubernetes to pick up secret changes on existing pods
+                        kubectl rollout restart statefulset/urlshortener-db || true
+                        kubectl rollout restart deployment/urlshortener-app || true
                     '''
+
                 }
             }
         }
@@ -79,10 +84,21 @@ pipeline {
             }
         }
 
-        stage('Running kubernetes'){
-            steps{
+        stage('Deploy to Kubernetes') {
+            steps {
                 dir('services/UrL_shortener_Service') {
-                    sh 'kubectl apply -f k8s'
+                    sh '''
+                        # 1. Apply updated configuration files
+                        kubectl apply -f k8s
+        
+                        # 2. Force a fresh rollout of pods
+                        kubectl rollout restart statefulset/urlshortener-db
+                        kubectl rollout restart deployment/urlshortener-app
+        
+                        # 3. Wait for new pods to reach Healthy status
+                        kubectl rollout status statefulset/urlshortener-db --timeout=90s
+                        kubectl rollout status deployment/urlshortener-app --timeout=90s
+                    '''
                     sh 'kubectl get pods'
                 }
             }
@@ -91,7 +107,7 @@ pipeline {
         stage('Completed') {
             steps {
                 echo 'Completed'
-                sh ''
+                sh 'minikube service urlshortener-app-service --url'
             }
         }
     }
