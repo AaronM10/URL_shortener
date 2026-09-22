@@ -9,6 +9,8 @@ pipeline {
                 checkout scm
             }
         }
+
+        /// Continuous integration where testing and pushing images happen
         stage('Install Tools') {
             steps {
                 echo 'Installing Minikube and Kubectl...'
@@ -39,6 +41,28 @@ pipeline {
         '''
             }
         }
+        stage('Test and validating manifests') {
+            steps {
+                dir('services/UrL_shortener_Service') {
+                    sh 'kubectl apply --dry-run=client -f k8s'
+                }
+            }
+        }
+        stage('Building Image After Testing (Containerising it)') {
+            steps {
+                dir('services/UrL_shortener_Service') {
+                    sh 'docker build -t aaronm10/shortener-service:v1 .'
+                }
+            }
+        }
+        stage('Pushing Image to Docker') {
+            steps {
+                dir('services/UrL_shortener_Service') {
+                    sh 'docker push aaronm10/shortener-service:v1'
+                }
+            }
+        }
+        /// Continuous development where it checks if it can be deployed properly
         stage('Start Minikube') {
             steps {
                 echo 'Starting Minikube using Docker driver...'
@@ -46,6 +70,7 @@ pipeline {
                 sh 'minikube start --driver=docker'
             }
         }
+
         stage('Create DB Secret') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'postgres-creds', usernameVariable: 'DB_USER', passwordVariable: 'DB_PASS')]) {
@@ -59,27 +84,6 @@ pipeline {
                         kubectl rollout restart deployment/urlshortener-app || true
                     '''
 
-                }
-            }
-        }
-        stage('Test and validating manifests') {
-            steps {
-                dir('services/UrL_shortener_Service') {
-                    sh 'kubectl apply --dry-run=client -f k8s'
-                }
-            }
-        }
-        stage('Building Image After Testing (Containerising it)') {
-            steps {
-                dir('services/UrL_shortener_Service') {
-                    sh ' eval $(minikube docker-env) && docker build -t aaronm10/shortener-service:v1 .'
-                }
-            }
-        }
-        stage('Pushing Image to Docker') {
-            steps {
-                dir('services/UrL_shortener_Service') {
-                    sh 'docker push aaronm10/shortener-service:v1'
                 }
             }
         }
